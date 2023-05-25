@@ -1,0 +1,63 @@
+% External metabolites 
+external("S";"biomass";"fuel1";"fuel2").
+% Internal metabolites 
+metabolite("ADP";"ATP";"M1";"M10";"M11";"M12";"M13";"M2";"M3";"M4";"M5";"M6";"M7";"M8";"M9").
+% Reversible reactions 
+reversible("R10","R10_rev";"R04","R04_rev";"R02","R02_rev";"R05","R05_rev").
+% All reactions 
+reaction("R01";"R16";"R03";"R02";"R02_rev";"R05";"R05_rev";"R04";"R04_rev";"R07";"R06";"R09";"R08";"R11";"R14";"R18";"R10";"R10_rev";"R15";"R17";"R12";"R13").
+% Stoichiometry 
+stoichiometry("S","R01","-1.0").
+stoichiometry("ATP","R01","-1.0").
+stoichiometry("M1","R01","1.0").
+stoichiometry("ADP","R01","1.0").
+stoichiometry("M12","R16","-1.0").
+stoichiometry("M5","R16","1.0").
+stoichiometry("M2","R03","-1.0").
+stoichiometry("ADP","R03","-1.0").
+stoichiometry("M3","R03","1.0").
+stoichiometry("ATP","R03","1.0").
+stoichiometry("M1","R02","-1.0").
+stoichiometry("M2","R02","1.0").
+stoichiometry("M4","R05","-1.0").
+stoichiometry("M5","R05","1.0").
+stoichiometry("M3","R04","-1.0").
+stoichiometry("M4","R04","1.0").
+stoichiometry("M6","R07","-1.0").
+stoichiometry("M7","R07","1.0").
+stoichiometry("M3","R06","-1.0").
+stoichiometry("M6","R06","1.0").
+stoichiometry("M8","R09","-1.0").
+stoichiometry("fuel1","R09","1.0").
+stoichiometry("M7","R08","-1.0").
+stoichiometry("M5","R08","0.5").
+stoichiometry("M8","R08","0.5").
+stoichiometry("M9","R11","-1.0").
+stoichiometry("M2","R11","1.0").
+stoichiometry("M11","R14","-1.0").
+stoichiometry("M12","R14","0.7").
+stoichiometry("M13","R14","0.3").
+stoichiometry("M3","R18","-1.0").
+stoichiometry("M8","R18","2.0").
+stoichiometry("M1","R10","-1.0").
+stoichiometry("M9","R10","1.0").
+stoichiometry("M13","R15","-1.0").
+stoichiometry("fuel2","R15","1.0").
+stoichiometry("M5","R17","-1.0").
+stoichiometry("biomass","R17","1.0").
+stoichiometry("M9","R12","-1.0").
+stoichiometry("M10","R12","1.0").
+stoichiometry("M9","R13","-1.0").
+stoichiometry("ADP","R13","-1.0").
+stoichiometry("M11","R13","1.0").
+stoichiometry("ATP","R13","1.0").
+
+% Reversible reactions stoichiometry 
+stoichiometry("M1","R02_rev","1.0").
+stoichiometry("M2","R02_rev","-1.0").
+stoichiometry("M4","R05_rev","1.0").
+stoichiometry("M5","R05_rev","-1.0").
+stoichiometry("M3","R04_rev","1.0").
+stoichiometry("M4","R04_rev","-1.0").
+stoichiometry("M1","R10_rev","1.0").
+stoichiometry("M9","R10_rev","-1.0").

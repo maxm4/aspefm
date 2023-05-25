@@ -1,0 +1,33 @@
+%Computation of constraints without altering the EFM enumeration
+%Constraints from Covert and Palsson, 2003
+%Regulation proteins
+regprotein("RPo2") :- not env("Oxygen"). %RPo2 IF NOT Oxygen
+regprotein("RPc1") :- env("Carbon1"). %RPc1 IF Carbon1
+regprotein("RPh") :- support("Th"). %RPh IF Th
+regprotein("RPb") :- support("R2_rev"). %RPb IF R2_Rev
+%Reaction regulation rules
+repressed("R2") :- regprotein("RPb"). %R2 IF NOT RPb
+repressed("R7") :- regprotein("RPb"). %R7 IF NOT RPb
+repressed("R8") :- regprotein("RPh"). %R8 IF NOT RPh
+repressed("R5b") :- not regprotein("RPo2"). %R5b IF RPO2
+repressed("R5a") :- regprotein("RPo2"). %R5a IF NOT RPO2
+repressed("Rres") :- regprotein("RPo2"). %Rres IF NOT RPO2
+repressed("Tc2") :- regprotein("RPc1"). %Tc2 IF NOT RPc1
+%envs specification
+:- support("Tc1"); not env("Carbon1").  % SUP IF ENV
+:- support("Tc2"); not env("Carbon2").
+:- support("Th"); not env("H").
+:- support("Tf"); not env("F").
+:- support("To2"); not env("Oxygen").
+%Remove CWA for envs
+environment("Carbon1"; "Carbon2"; "H"; "F"; "Oxygen").
+env(E) :- env(E); environment(E).
+not env(E) :- not env(E); environment(E).
+%Consistency
+enzyme("R5a"; "R5b"; "R7"; "R8"; "Rres"; "Tc2").
+inconsistent :- repressed(E); support(E); enzyme(E).
+%Clingo show instructions
+#show env/1.
+#show regprotein/1.
+#show repressed/1.
+#show inconsistent/0.

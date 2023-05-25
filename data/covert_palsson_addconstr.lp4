@@ -1,0 +1,11 @@
+%%% Note: Ce fichier doit être lancé avec covert_palsson_constr.lp4
+%%% Commenter et décommenter les lignes de ce fichier avec "%"
+%% Final additional constraints, altering EFM enumeration
+%% Exclude inconsistent elementary modes
+:- inconsistent.
+%% Environment specification
+env("Carbon1").
+env("Carbon2").
+env("Oxygen").
+env("H").
+env("F").

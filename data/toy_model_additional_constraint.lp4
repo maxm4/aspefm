@@ -1,0 +1,3 @@
+:- not support("R09").
+:- not support("R15").
+:- not support("R17").
