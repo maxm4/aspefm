@@ -1,4 +1,5 @@
 %Computation of constraints without altering the EFM enumeration
+%Such constraints are referred to as 'negative constraints'
 %Constraints from Covert and Palsson, 2003
 %Regulation proteins
 regprotein("RPo2") :- not env("Oxygen"). %RPo2 IF NOT Oxygen

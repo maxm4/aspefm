@@ -1,0 +1,5 @@
+% Desired reaction R3 -- necessitates MCSChecker -- we refer to this as a 'positive constraint'
+:- not support("mcs_R5").
+:- not support("mcs_R10").
+wanted("mcs_R5").
+wanted("mcs_R10").

@@ -1,0 +1,76 @@
+% Internal metabolites 
+metabolite("R1";"R10";"R2";"R3";"R4";"R5";"R6";"R7";"R8";"R9").
+% Irreversible reaction metabolites 
+mirrev("R4";"R3";"R5";"R2";"R10";"R6";"R9";"R1";"R8").
+% Reversible reactions 
+reversible("mcs_R7","mcs_R7_rev";"mcs_D","mcs_D_rev";"mcs_A","mcs_A_rev";"mcs_R5","mcs_R5_rev";"mcs_R9","mcs_R9_rev";"mcs_R8","mcs_R8_rev";"mcs_P","mcs_P_rev";"mcs_R6","mcs_R6_rev";"mcs_R3","mcs_R3_rev";"mcs_R2","mcs_R2_rev";"mcs_R1","mcs_R1_rev";"mcs_R10","mcs_R10_rev";"mcs_B","mcs_B_rev";"mcs_E","mcs_E_rev";"mcs_R4","mcs_R4_rev";"mcs_C","mcs_C_rev").
+% All reactions 
+reaction("mcs_A";"mcs_A_rev";"mcs_B";"mcs_B_rev";"mcs_C";"mcs_C_rev";"mcs_D";"mcs_D_rev";"mcs_E";"mcs_E_rev";"mcs_P";"mcs_P_rev";"mcs_R1";"mcs_R1_rev";"mcs_R10";"mcs_R10_rev";"mcs_R2";"mcs_R2_rev";"mcs_R3";"mcs_R3_rev";"mcs_R3_R10_tgt";"mcs_R4";"mcs_R4_rev";"mcs_R5";"mcs_R5_rev";"mcs_R6";"mcs_R6_rev";"mcs_R7";"mcs_R7_rev";"mcs_R8";"mcs_R8_rev";"mcs_R9";"mcs_R9_rev").
+% Transporters 
+transporter("mcs_R1";"mcs_R1_rev";"mcs_R10";"mcs_R10_rev";"mcs_R2";"mcs_R2_rev";"mcs_R3";"mcs_R3_rev").
+% Reactions of interest 
+interest("mcs_R1";"mcs_R1_rev";"mcs_R10";"mcs_R10_rev";"mcs_R2";"mcs_R2_rev";"mcs_R3";"mcs_R3_rev";"mcs_R4";"mcs_R4_rev";"mcs_R5";"mcs_R5_rev";"mcs_R6";"mcs_R6_rev";"mcs_R7";"mcs_R7_rev";"mcs_R8";"mcs_R8_rev";"mcs_R9";"mcs_R9_rev").
+% Reactions issued from stoichiometry constraints
+stoichreac("mcs_A";"mcs_A_rev";"mcs_B";"mcs_B_rev";"mcs_C";"mcs_C_rev";"mcs_D";"mcs_D_rev";"mcs_E";"mcs_E_rev";"mcs_P";"mcs_P_rev").
+
+% Stoichiometry 
+stoichiometry("R1","mcs_A","1.0").
+stoichiometry("R1","mcs_R1","1.0").
+stoichiometry("R10","mcs_D","-1.0").
+stoichiometry("R10","mcs_R10","1.0").
+stoichiometry("R10","mcs_R3_R10_tgt","-1.0").
+stoichiometry("R2","mcs_P","-1.0").
+stoichiometry("R2","mcs_R2","1.0").
+stoichiometry("R3","mcs_E","-1.0").
+stoichiometry("R3","mcs_R3","1.0").
+stoichiometry("R3","mcs_R3_R10_tgt","-1.0").
+stoichiometry("R4","mcs_A","-1.0").
+stoichiometry("R4","mcs_B","1.0").
+stoichiometry("R4","mcs_R4","1.0").
+stoichiometry("R5","mcs_A","-1.0").
+stoichiometry("R5","mcs_C","1.0").
+stoichiometry("R5","mcs_R5","1.0").
+stoichiometry("R6","mcs_A","-1.0").
+stoichiometry("R6","mcs_D","1.0").
+stoichiometry("R6","mcs_R6","1.0").
+stoichiometry("R7","mcs_B","-1.0").
+stoichiometry("R7","mcs_C","1.0").
+stoichiometry("R7","mcs_R7","1.0").
+stoichiometry("R8","mcs_B","-1.0").
+stoichiometry("R8","mcs_P","1.0").
+stoichiometry("R8","mcs_R8","1.0").
+stoichiometry("R9","mcs_C","-1.0").
+stoichiometry("R9","mcs_D","-1.0").
+stoichiometry("R9","mcs_E","1.0").
+stoichiometry("R9","mcs_P","1.0").
+stoichiometry("R9","mcs_R9","1.0").
+
+% Reversible reactions stoichiometry 
+stoichiometry("R1","mcs_A_rev","-1.0").
+stoichiometry("R1","mcs_R1_rev","-1.0").
+stoichiometry("R10","mcs_D_rev","1.0").
+stoichiometry("R10","mcs_R10_rev","-1.0").
+stoichiometry("R2","mcs_P_rev","1.0").
+stoichiometry("R2","mcs_R2_rev","-1.0").
+stoichiometry("R3","mcs_E_rev","1.0").
+stoichiometry("R3","mcs_R3_rev","-1.0").
+stoichiometry("R4","mcs_A_rev","1.0").
+stoichiometry("R4","mcs_B_rev","-1.0").
+stoichiometry("R4","mcs_R4_rev","-1.0").
+stoichiometry("R5","mcs_A_rev","1.0").
+stoichiometry("R5","mcs_C_rev","-1.0").
+stoichiometry("R5","mcs_R5_rev","-1.0").
+stoichiometry("R6","mcs_A_rev","1.0").
+stoichiometry("R6","mcs_D_rev","-1.0").
+stoichiometry("R6","mcs_R6_rev","-1.0").
+stoichiometry("R7","mcs_B_rev","1.0").
+stoichiometry("R7","mcs_C_rev","-1.0").
+stoichiometry("R7","mcs_R7_rev","-1.0").
+stoichiometry("R8","mcs_B_rev","1.0").
+stoichiometry("R8","mcs_P_rev","-1.0").
+stoichiometry("R8","mcs_R8_rev","-1.0").
+stoichiometry("R9","mcs_C_rev","1.0").
+stoichiometry("R9","mcs_D_rev","1.0").
+stoichiometry("R9","mcs_E_rev","-1.0").
+stoichiometry("R9","mcs_P_rev","-1.0").
+stoichiometry("R9","mcs_R9_rev","-1.0").

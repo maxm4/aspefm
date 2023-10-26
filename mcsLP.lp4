@@ -1,10 +1,11 @@
-% solve[LP].lp4
+% mcs[LP].lp4
 % Logic Program in Clingo[LP] - Clingcon ASP format
 % Finds fluxes that belongs to the stoichiometric matrix kernel
 % Defines an heuristic for them to be enumerated subset minimal
+% Used to compute Minimal Cut Sets in metabolic networks
 
 % Domain upper bound for flux values
-#const nb=500000.
+#const nb=200000.
 
 % Tells clingo that it is okay if the input file does not contain these predicates
 reversible(do_not_use, do_not_use).
@@ -15,20 +16,22 @@ reversible(do_not_use, do_not_use).
 % Rule B: Two irreversible reactions issued from the splitting of one reversible reaction are mutually exclusive
 :- support(R1); support(R2); 1 {reversible(R1, R2); reversible(R2, R1)} 1; reaction(R1); reaction(R2).
 
-	% Note : {a;b} is chosen because relation reversible(X,Y) is symetric
-	% This is a precaution in case the relation was only defined one-way
-
-% Rule C : At least one reaction must be used 
+% Rule C : At least one reaction that is not the target reaction must be used
 :- not support(R) : reaction(R).
+:- not cutset(R) : reaction(R).
 
-% Rule D : For each metabolite, the sum, weighted by the stoichiometry, of fluxes of all reactions is null
-&sum{C*flux(R) : stoichiometry(M, R, C), reaction(R)} = 0 :- metabolite(M).
+% Rule D : For each metabolite, the sum, weighted by the stoichiometry, of fluxes of all active reactions is null
+&sum{C*flux(R) : stoichiometry(M, R, C), reaction(R)} >= 0 :- metabolite(M); mirrev(M).
+&sum{C*flux(R) : stoichiometry(M, R, C), reaction(R)} = 0 :- metabolite(M); not mirrev(M).
 
 % Compute support
-support(R) :- &sum{flux(R)} > 0; reaction(R).
+support(R) :- &sum{flux(R)} > 0; reaction(R); not stoichreac(R).
+
+% Atoms in which we are interested in
+cutset(R) :- support(R); interest(R).
 
 % Support minimization heuristic
-#heuristic support(R). [1, false]
+#heuristic cutset(R). [1, false]
 
-% Only show support atoms
-#show support/1.
+% Show support atoms
+#show cutset/1.

@@ -1,7 +1,6 @@
-% option data defaults
-#const show=0.
+#const show=0. % option data defaults
 #const accuracy=10.
-#const epsilon=(1,1). % similar to cplex default
+#const epsilon=(1,3). % similar to cplex default
 #const nstrict=0.
 #const solver=cplx.
 #const trace=0.
@@ -16,16 +15,24 @@ from __future__ import division
 from __future__ import print_function
 from builtins import str
 from builtins import range
-from past.utils import old_div
 from builtins import object
-from cplex.exceptions import CplexSolverError, error_codes
-from numpy import array, where
+
+from typing import cast
 
 import sys
 import time
 
+from cplex.exceptions import CplexSolverError, error_codes
+from numpy import array, where
+from threading import Lock
+
+from extensions.list_of_extensions import ListOfExtensions
+
 import warnings
-warnings.simplefilter('ignore', DeprecationWarning)    
+
+warnings.simplefilter('ignore', DeprecationWarning)  
+
+MIN_NUMBER_UNBOUND_LITS_TEST = 3 # to transform into clingo #const someday
 
 class Propagator(object):
 
@@ -44,9 +51,10 @@ class Propagator(object):
             self.total_lits = 0
             self.oclit_trail = []       # [oclits]
             self.oclit_recent_active = 0
+            self.positives = set()
             self.active_oclit = 0       # number of undec oclits
-            self.lits_current = 0       # number of decided watched literals
-            self.lp = None              # lpsolve object  
+            self.lits_current = 0       # number of decided watched literals  
+            self.lp = cast(cplx, None)  # type: cplx # lpsolve object
             self.current_assignment = None
             self.stats = ''
             self.times = (0,0,0,0,0,0)  # (scalls, stime, addcalls, addtime, resetcalls, resettime)
@@ -59,20 +67,13 @@ class Propagator(object):
 
         def save_stats(self, solver, debug, initcalls, inittime, propcalls, proptime, undocalls, undotime, checkcalls, checktime):
             self.stats = self.lp.get_stats()
-            if solver == 'lps':
-                if self.lp.get_time() != 'Error' and self.lp.get_time() != 'Unsat':
-                    times = self.lp.get_time()
-                    self.times = (self.times[0] + times[0], self.times[1] + times[1], self.times[2] + times[2], self.times[3] + times[3], self.times[4] + times[4], self.times[5] + times[5])
-                self.times_print = 'LP solver calls: ' + str(self.times[0]) + '   Time lp_solve :  ' + str(self.times[1]) + '\n'
-            elif solver == 'cplx':
+            if solver == 'cplx':
                 if self.lp.get_time() != 'Error' and self.lp.get_time() != 'Unsat':
                     times = self.lp.get_time()
                     self.times = (self.times[0] + times[0], self.times[1] + times[1], self.times[2] + times[2], self.times[3] + times[3], self.times[4] + times[4], self.times[5] + times[5])
                 self.times_print = 'LP solver calls: ' + str(self.times[0]) + '   Time cplex :  ' + str(self.times[1]) + '\n'
-            if debug > 0:
+            if debug > 1:
                 self.times_print = self.times_print + '\n' + 'Calls init: ' + str(initcalls) + '      Time init:  ' + str(inittime) + '\n' + 'Calls propagate: ' + str(propcalls) + '      Time propagate:  ' + str(proptime) + '\n' + 'Calls undo: ' + str(undocalls) + '      Time undo:  ' + str(undotime) + '\n' + 'Calls add: ' + str(self.times[2]) + '      Time add:  ' + str(self.times[3]) + '\n' + 'Calls reset: ' + str(self.times[4]) + '      Time reset:  ' + str(self.times[5]) + '\n' + 'Calls check: ' + str(checkcalls) + '      Time check:  ' + str(checktime)
-
-
 
         def print_assignment(self, show):
             print('')
@@ -81,12 +82,12 @@ class Propagator(object):
                 print(self.stats) 
                 print('')
                 print('solution')
-                print(self.current_assignment)
+                print(self.current_assignment, flush=True)
                 print('')
                 print(self.times_print)
                 print('')
             else:
-                print(self.current_assignment)
+                print(self.current_assignment, flush=True)
                 print('')
                 print(self.times_print)
                 print('')
@@ -196,6 +197,8 @@ class Propagator(object):
                 self.__lp_objective(atom, init)
             if term.name == 'dom':
                 self.__lp_domain(atom)
+        global extensions
+        extensions.init_action(init)
         if len(self.__obj_cond_lit) == 0:
             for varname in self.__objective:
                 weight = sum(self.__objective[varname])
@@ -210,8 +213,6 @@ class Propagator(object):
         self.__inittime += end-start
         self.__initcalls += 1
         self.__time = self.__time + end-start
-
-
 
     def print_assignment(self, thread_id):
         state = self.__state(thread_id)
@@ -231,7 +232,7 @@ class Propagator(object):
         rhs = atom.guard[1]
         rel = atom.guard[0]
         for elem in lhs:
-            if "Function" in str(elem.terms[0].type) and str(elem.terms[0].name) == '*': 
+            if "Function" in str(elem.terms[0].type) and str(elem.terms[0].name) == '*':
                 koef = self.__calc_bound(elem.terms[0].arguments[0])
                 if elem.terms[0].arguments[1].arguments == []:
                     varname = elem.terms[0].arguments[1].name
@@ -268,8 +269,6 @@ class Propagator(object):
         self.__constr[n] = (lit, (dict(weights),rel,self.__calc_bound(rhs)))
         self.__var_ta.setdefault(var,[]).append(n)
         self.__lit_ta.setdefault(lit,[]).append(n)
-
-
 
     # resolves structure of objective-statements and saves it
     def __lp_objective(self, atom, init):
@@ -354,7 +353,7 @@ class Propagator(object):
             elif expr.name == '*':
                 tmp = self.__calc_bound(args[0])*self.__calc_bound(args[1])
             elif expr.name == '/':
-                tmp = old_div(self.__calc_bound(args[0]),self.__calc_bound(args[1]))
+                tmp = self.__calc_bound(args[0])/self.__calc_bound(args[1])
         elif len(args) == 1:
             if args[0].arguments == []:
                 tmp = -self.__get_number(args[0])
@@ -457,6 +456,22 @@ class Propagator(object):
 
 
 
+    # quick define of the percentage of literals
+    def percentage_of_literals(self, state):
+        self.current_lit_percentage = state.lits_current * 100 / self.__lits_total_num # + self.nb_added_vls)
+        state.current_lit_percentage = self.current_lit_percentage
+        return self.current_lit_percentage
+
+
+    # test if k or less literals are unbound
+    def k_or_less_unbound_literals(self, state):
+        return (self.__lits_total_num - state.lits_current) <= MIN_NUMBER_UNBOUND_LITS_TEST
+    
+    
+    # reset recently active constraints
+    def reset_recent_active(self, state):
+        state.recent_active = []
+
 
     # sets objective dictionary {var: weight} wrt conditionals
     def __set_obj(self, state): 
@@ -481,30 +496,49 @@ class Propagator(object):
                     if clit in clits:
                         tmp = tmp + weight[clit]
         return tmp
-       
+
+
+
+    def decide(self, thread_id, assignmt, fallback):
+        global extensions
+        fallback = extensions.decide_action(thread_id, assignmt, fallback)
+        return fallback
+
 
 
     def propagate(self, control, changes): 
+        global extensions
         start = time.time()
         state = self.__state(control.thread_id)
+        if not extensions.propagate_before_update_action(control, state, changes):
+            return False
         self.__update_state(control, changes, state)
-        if (state.recent_active != [] or state.oclit_recent_active == 1) and old_div(state.lits_current*100, self.__lits_total_num) >= self.__prop_heur:
-            self.__solve(state) 
-            if self.__trace:
-                print('')
-                print('propagate with ', old_div(state.lits_current*100, state.total_lits), '%', changes) 
-                for constr in state.clist:
-                    print(state.clist[constr])
-                print('lp_trail: ', state.lp_trail)  
-                print('cond_trail: ', state.cond_trail)
-                print('eq_trail: ', state.eq_trail)
-                print('')
-            if state.lp.is_valid() and not self.__check_consistency(control, state):
-                end = time.time()
-                self.__proptime += end-start
-                self.__propcalls += 1
-                self.__time = self.__time + end-start
-                return False
+        #if (state.recent_active != [] or state.oclit_recent_active == 1) and self.percentage_of_literals(state) >= self.__prop_heur:
+        if (self.percentage_of_literals(state) >= self.__prop_heur):
+            if (state.positive) or (state.oclit_recent_active == 1) or (self.k_or_less_unbound_literals(state)):
+                #print("solve")
+                self.__solve(state)
+                self.reset_recent_active(state)
+                if not state.lp.is_valid():
+                    warnings.warn('Invalid lp state at {trail}'.format(state.lp_trail + state.cond_trail + state.eq_trail))
+                if self.__trace:
+                    print('', file=sys.stderr)
+                    print('propagate with ', self.current_lit_percentage, '%', changes, file=sys.stderr)
+                    if self.__debug > 0:
+                        for constr in state.clist:
+                            print(state.clist[constr], file=sys.stderr)
+                    print('lp_trail: ', state.lp_trail, file=sys.stderr)  
+                    print('cond_trail: ', state.cond_trail, file=sys.stderr)
+                    print('eq_trail: ', state.eq_trail, file=sys.stderr)
+                    print('', file=sys.stderr)
+                if state.lp.is_valid() and not self.__check_consistency(control, state): 
+                    end = time.time()
+                    self.__proptime += end-start
+                    self.__propcalls += 1
+                    self.__time = self.__time + end-start
+                    return False
+                if not extensions.propagate_after_check_action(control, state):
+                    return False
         end = time.time()
         self.__proptime += end-start
         self.__propcalls += 1
@@ -515,6 +549,8 @@ class Propagator(object):
 
     def undo(self, thread_id, assign, changes):
         start = time.time()
+        global extensions
+        extensions.undo_action(thread_id, assign, changes)
         state = self.__state(thread_id)
         lpid = state.stack[-1][1]
         cid = state.stack[-1][2]
@@ -556,21 +592,6 @@ class Propagator(object):
         self.__checktime += end-start
         self.__checkcalls += 1
         self.__time = self.__time + end-start
-        #times = state.lp.get_time()
-        #print ''
-        #if self.__debug > 0:
-        #    print 'Calls init: ', self.__initcalls, '      Time init:  ', self.__inittime
-        #    print 'Calls propagate: ', self.__propcalls, '      Time propagate:  ', self.__proptime
-        #    print 'Calls undo: ', self.__undocalls, '      Time undo:  ', self.__undotime
-        #    print 'Calls add: ', times[2], '      Time add:  ', times[3]
-        #    print 'Calls reset: ', times[4], '      Time reset:  ', times[5]
-        #    print 'Calls check: ', self.__checkcalls, '      Time check:  ', self.__checktime
-        #if self.__solver == 'lps':
-        #    print 'LP solver calls: ', times[0], '   Time lp_solve :  ', times[1]
-        #elif self.__solver == 'cplx':
-        #    print 'LP solver calls: ', times[0], '   Time cplex :  ', times[1]
-        #print 'Time propagator:  ', self.__time
-        #print ''
         return True
 
 
@@ -580,8 +601,10 @@ class Propagator(object):
             self.update_state_info(state)
         if len(state.stack) == 0 or state.stack[-1][0] < control.assignment.decision_level:
             state.stack.append((control.assignment.decision_level, len(state.lp_trail), len(state.cond_trail), len(state.oclit_trail), len(state.eq_trail)))
-        state.recent_active = []
+        #state.recent_active = []
         state.lits_current += len(changes)
+        state.positive = False
+        #print(changes)
         for lit in changes:
             var=abs(lit)
             if lit in self.__lit_ta:
@@ -620,6 +643,14 @@ class Propagator(object):
                 state.active_oclit -= 1 
                 if state.active_oclit == 0:
                     state.oclit_recent_active = 1
+            if lit > 0:
+                state.positive = True
+            #    state.positives.add(lit)
+            #if lit < 0 and -lit in state.positives:
+            #    state.positive = True
+            #    state.positives.remove(-lit)
+        #print(state.positives)
+        #print(state.recent_active, changes)
 
 
 
@@ -639,35 +670,54 @@ class Propagator(object):
 
     # returns false if lp system inconsistent else true
     def __check_consistency(self, control, state):
-        if not state.lp.is_sat() and old_div(state.lits_current*100, state.total_lits) >= self.__core_confl_heur: 
+        #lock = Lock()
+        #lock.acquire()
+        if not state.lp.is_sat() and self.current_lit_percentage >= self.__core_confl_heur:
             active_cnums = [cnum for cnum in state.active_cnum if state.active_cnum[cnum][0] == 0 and state.active_cnum[cnum][1] != 0]
             core_confl = self.__core_confl_cplex(state, [], active_cnums)
-            if core_confl is None: # if no core conflict
-                return False # in that case return False without adding nogoods
+            if core_confl is None: # if no core conflict despite unsat
+                #return False # return False without adding nogoods, solutions with LP Unsat
+                clause = self.__get_confl(state, active_cnums) # add nogoods on active cnums
+                if not control.add_clause(clause) or not control.propagate():
+                    return False # return False adding nogood, no solutions with LP Unsat
+                assert(False)
+                inactive_cnums = [cnum for cnum in state.active_cnum if state.active_cnum[cnum][0] != 0 or state.active_cnum[cnum][1] == 0]
+                print(active_cnums, inactive_cnums)
+                inactive = self.__get_confl(state, active_cnums) # add nogoods on active cnums
+                if not control.add_clause(clause) or not control.add_nogood(inactive) or not control.propagate():
+                    return False
             clause = self.__get_confl(state, core_confl)
             if self.__trace:
-                print('')
-                print('core conflict constraints: ')
-                for confl_cnum in core_confl:
-                    print(state.clist[confl_cnum])
-                print('')
+                self.__consistency_trace(state, core_confl, clause, 'core conflict')
             if not control.add_clause(clause) or not control.propagate():
                 return False
-            print('If this was printed, then I did something really wrong!') 
+            assert(False)
         if not state.lp.is_sat():
             active_cnums = [cnum for cnum in state.active_cnum if state.active_cnum[cnum][0] == 0 and state.active_cnum[cnum][1] != 0]
             clause = self.__get_confl(state, active_cnums)
             if self.__trace:
-                print('')
-                print('conflict constraints: ')
-                for confl_cnum in active_cnums:
-                    print(state.clist[confl_cnum])
-                print('')
+                self.__consistency_trace(state, active_cnums, clause, 'active cnums')
             if not control.add_clause(clause) or not control.propagate():
                 return False
-            print('If this was printed, then I did something really wrong!')
+            assert(False)
+        #lock.release()
+        global extensions 
+        if not extensions.check_consistency_action(control, state):
+            return False
         return True
 
+
+    # debug display for check_consistency
+    def __consistency_trace(self, state, cnums, clause, display):
+        print(f'{display}') # in sys.stdout
+        print('', file=sys.stderr)
+        print(f'{display} constraints: ', file=sys.stderr)
+        if self.__debug > 0:
+            for confl_cnum in cnums:
+                print(state.clist[confl_cnum], file=sys.stderr)
+        print(cnums, file=sys.stderr)
+        print('clause: ', clause, file=sys.stderr)
+        print('', file=sys.stderr)
 
 
     # search core conflict
@@ -694,30 +744,56 @@ class Propagator(object):
         return confl_cnums
 
 
-    # search core conflict with cplex
-    def __core_confl_cplex(self, state, confl_cnums, active_cnums):
-        constr_list = []
-        state.lp.reset()
-        for cnum in active_cnums:
-            constr_list.append(state.clist[cnum])
-        state.lp.add_constr(constr_list)
-        state.lp.solve_lp()
-        confl = state.lp.get_confl()
-        confl.refine(confl.linear_constraints())
+    # show full conflicts to debug lower and upper bounds induced conflicts and unsatisfiabilities
+    def show_conflict(self, c, ci):
+        import pandas
+        names = lambda rows: [{c.variables.get_names()[k]: v for k, v in zip(row.ind, row.val)} for row in rows] # convert cplex SparsePair to dict
+        ci.refine(ci.linear_constraints())
         try:
+            confl_nums = array(ci.get())
+            rs = pandas.Series(names(c.linear_constraints.get_rows())).loc[where(confl_nums == ci.group_status.member)[0]]
+            print(rs, file=sys.stderr)
+        except CplexSolverError:
+            print("Linear constraints conflict get failed")
+        ci.refine(ci.lower_bound_constraints())
+        try:
+            confl_nums = array(ci.get())
+            lbs = pandas.Series(c.variables.get_names()).loc[where(confl_nums == ci.group_status.member)[0]]
+            print(lbs, file=sys.stderr)
+            print(pandas.Series(c.variables.get_lower_bounds()).loc[where(confl_nums == ci.group_status.member)[0]], file=sys.stderr)
+        except CplexSolverError:
+            print("Lower bound constraints conflict get failed")    
+        ci.refine(ci.upper_bound_constraints())
+        try:
+            confl_nums = array(ci.get())
+            ubs = pandas.Series(c.variables.get_names()).loc[where(confl_nums == ci.group_status.member)[0]]
+            print(pandas.Series(c.variables.get_upper_bounds()).loc[where(confl_nums == ci.group_status.member)[0]], file=sys.stderr)
+            print(ubs, file=sys.stderr)
+        except CplexSolverError:
+            print("Upper bound constraints conflict get failed")            
+
+
+    # search core conflict with cplex 
+    def __core_confl_cplex(self, state, confl_cnums, active_cnums):
+        cplex = state.lp
+        try:
+            confl = cplex.get_confl()
+            confl.refine(confl.linear_constraints())
             confl_cnums = array(confl.get())
         except CplexSolverError as err:
-            if err.args[2] == error_codes.CPXERR_NO_CONFLICT:
+            if not err.args[2] == error_codes.CPXERR_NO_CONFLICT:
+                warnings.warn('No conflict tied to a cplex error {code}'.format(err.args[2]))
                 return None
-            else:
-                raise
+            if self.__trace:
+                self.show_conflict(cplex.get_solver(), cplex.get_confl())
+            warnings.warn('No conflict found despite an unsat linear program')
+            return None
         confl_cnums = where(confl_cnums == confl.group_status.member)[0]
         confl_cnums = [active_cnums[i] for i in confl_cnums]
         if self.__trace:
-            print('active:', active_cnums, file=sys.stderr)
-            print('confl:', confl_cnums, file=sys.stderr)
+            print('active_cnums', active_cnums, file=sys.stderr)
+            print('confl_cnums', confl_cnums, file=sys.stderr)
         return confl_cnums
-
 
 
     # generates conflict clause from a conflict 
@@ -748,13 +824,14 @@ import cplex
 import cplex.callbacks
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
+
 class cplx(object):
 
 
     def __init__(self, mapping, doms, ilp):
         self.__var_mapping = {}         # {varname : position}
         self.__doms = doms              # {varname : [(lb,ub)]}
-        self.__stime = 0.0 
+        self.__stime = 0.0
         self.__scalls = 0
         self.__addtime = 0.0
         self.__addcalls = 0
@@ -769,30 +846,38 @@ class cplx(object):
         self.__solver_obj.set_error_stream(None)
         self.__solver_obj.set_warning_stream(None)
         self.__solver_obj.set_results_stream(None)
+        self.__cplex_debug = 0
+        global extensions
+        extensions.cplex_init_action(self)
+        self.__cplex_exception = False
         self.reset()
         if ilp:
             self.set_ilp()
-        
-    
+
 
     def set_mapping(self, mapping):
         self.__var_mapping = mapping
 
 
-    def set_ilp(self): 
-        for i in range(len(self.__var_mapping)):    
+    def set_ilp(self):
+        for i in range(len(self.__var_mapping)):
             self.__solver_obj.variables.set_types(i, self.__solver_obj.variables.type.integer)
 
 
     def solve_lp(self):
-        self.__scalls = self.__scalls +1 
+        self.__scalls = self.__scalls + 1
         start = time.time()
-        self.__solver_obj.solve() 
+        self.__cplex_exception = False
+        try: # doesn't solve the problem with the errors though
+            self.__solver_obj.solve()
+        except cplex.exceptions.errors.CplexSolverError as exc:
+            self.__cplex_exception = True
+            print(exc) # basis singular sometimes
         self.__stime = self.__stime + time.time() - start
-        
+
 
     def reset(self):
-        self.__resetcalls = self.__resetcalls +1 
+        self.__resetcalls = self.__resetcalls + 1
         start = time.time()
         self.__clist = []               # [({varname : weight}, rel, b)]
         self.__obj = {}                 # {varname : weight}
@@ -801,8 +886,8 @@ class cplx(object):
 
 
     # expects clist = [({varname : weight}, rel, b)]
-    def add_constr(self, clist): 
-        self.__addcalls = self.__addcalls +1 
+    def add_constr(self, clist):
+        self.__addcalls = self.__addcalls + 1
         start = time.time()
         self.__clist.extend(clist)
         lin_expr = []
@@ -810,7 +895,7 @@ class cplx(object):
         rhs = []
         for constr in clist:
             items = list(constr[0].items())
-            varnames = [x[0] for x in items] 
+            varnames = [x[0] for x in items]
             values = [x[1] for x in items]
             lin_expr.append(cplex.SparsePair(ind = varnames, val = values))
             rel = constr[1]
@@ -824,18 +909,18 @@ class cplx(object):
             rhs.append(b)
         self.__solver_obj.linear_constraints.add(lin_expr = lin_expr, senses = rels, rhs = rhs)
         self.__addtime = self.__addtime + time.time() - start
-        
+
 
     # expects wopt = {varname : weights}; mode = max/min
     def set_obj(self, wopt, mode):
         self.__obj = dict(wopt)
         self.__mode = mode
         if mode == 'max':
-            self.__solver_obj.objective.set_sense(self.__solver_obj.objective.sense.maximize) 
+            self.__solver_obj.objective.set_sense(self.__solver_obj.objective.sense.maximize)
         else:
             if mode != 'min':
                 self.__mode = 'default min'
-            self.__solver_obj.objective.set_sense(self.__solver_obj.objective.sense.minimize) 
+            self.__solver_obj.objective.set_sense(self.__solver_obj.objective.sense.minimize)
         self.__solver_obj.objective.set_linear(list(wopt.items()))
 
 
@@ -859,6 +944,7 @@ class cplx(object):
 
     def is_sat(self): # 102 - int with tolerance could be moved up if set tolerance was accessed!
         status = self.__solver_obj.solution.get_status()
+        self.print_status(status)
         if status in [1, 5, 6, 23, 24, 101]:
             return True
         elif status in [2, 3, 4, 10, 11, 12, 13, 21, 22, 25, 41, 102, 103, 115, 118]:
@@ -870,14 +956,28 @@ class cplx(object):
 
     def is_valid(self):
         status = self.__solver_obj.solution.get_status()
+        self.print_status(status)
         if status in [1,2,3,4,5,6,10,11,12,13,21,22,23,24,25,41,101,102,103,115,118]:
             return True
         return False
 
+
     def get_confl(self):
         return self.__solver_obj.conflict
-
     
+    
+    def get_solver(self):
+        return self.__solver_obj
+    
+
+    def print_status(self, status=0, nbsolv=0):
+        if self.__cplex_debug < 1: 
+            return
+        if not status:
+            status = self.__solver_obj.solution.get_status()
+        print('cplex status', status, f'({nbsolv})', file=sys.stderr)
+
+
     def get_time(self):
         if self.is_sat(): 
             time_return = (self.__scalls, self.__stime, self.__addcalls, self.__addtime, self.__resetcalls, self.__resettime)
@@ -898,7 +998,7 @@ class cplx(object):
             else:
                 slist.extend(res)
             obj = self.__solver_obj.solution.get_objective_value()
-            if accuracy > 0 and accuracy < 15:
+            if accuracy > 0 and accuracy < 40:
                 for i, var in enumerate(self.__var_mapping.keys()):
                     sdict[var] = round(slist[i], accuracy)
             else:
@@ -922,25 +1022,31 @@ class cplx(object):
         return stats
 
 
+    def write_file(self, name):
+        self.__solver_obj.write(name)
 
-
-import clingo
 
 def print_assignment(m):
     global prop
+    global extensions
+    extensions.on_model_action(m.thread_id)
     prop.print_assignment(m.thread_id)
 
 def main(prg):
+    sys.setrecursionlimit(10000)
     global prop
+    global extensions
     prop = Propagator(prg.get_const("show"), prg.get_const("accuracy"), prg.get_const("nstrict"), prg.get_const("epsilon"), prg.get_const("solver"), prg.get_const("trace"), prg.get_const("core_confl"), prg.get_const("prop_heur"), prg.get_const("debug"), prg.get_const("ilp"))
-    prg.register_propagator(prop)
     prg.ground([("base", [])])
+    extensions = ListOfExtensions(prg, globals())
+    prg.register_propagator(prop)
+    extensions.before_prg_solve_action(prg)
     prg.solve(on_model = print_assignment)
+    extensions.after_prg_solve_action()
 
 #end.
 
-
-#theory lp { 
+#theory lp {
     lin_term {
     - : 2, unary;
     * : 1, binary, left;
@@ -963,7 +1069,4 @@ def main(prg):
     &maximize/0 : lin_term, head;
     &dom/0 : bounds, {=}, lin_term, head
 }.
-
-
-
 

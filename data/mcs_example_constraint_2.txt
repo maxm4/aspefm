@@ -1,0 +1,3 @@
+% "No synthesis of undesired products D and E; EM1 and EM2"
+:- support("mcs_R1"; "mcs_R4"; "mcs_R8"; "mcs_R2").
+:- support("mcs_R1"; "mcs_R5"; "mcs_R7_rev"; "mcs_R8"; "mcs_R2").

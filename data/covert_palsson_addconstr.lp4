@@ -1,5 +1,3 @@
-%%% Note: Ce fichier doit être lancé avec covert_palsson_constr.lp4
-%%% Commenter et décommenter les lignes de ce fichier avec "%"
 %% Final additional constraints, altering EFM enumeration
 %% Exclude inconsistent elementary modes
 :- inconsistent.

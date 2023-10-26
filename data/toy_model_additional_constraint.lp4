@@ -1,3 +1,3 @@
+% All reactions R09, R15, and R17 desired -- necessitates EFMChecker -- we refer to this as a 'positive constraint'
 :- not support("R09").
-:- not support("R15").
 :- not support("R17").
