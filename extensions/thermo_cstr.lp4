@@ -1,0 +1,7 @@
+% thermos_cstr.lp4
+% Logic Program in Clingo[LP] ASP format
+% Additional rule to compute EFM consistent with thermodynamics
+
+% Thermodynamics rule
+:- &sum{K*flux(R) : reaction(R), keq(R, K)} <= 0.
+

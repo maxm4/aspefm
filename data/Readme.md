@@ -1,5 +1,7 @@
 # Example models
 
+Please use the module *[mparser](https://github.com/maxm4/mparser)* for creation of metabolic networks for usage with *aspefm*.
+
 ```covert_palsson.lp4```:
 
 ```covert_palsson_constr.lp4```:
@@ -31,7 +33,7 @@ Examples and regulation constraints from :
 
 Pickled data structure containing the stocihiometric matrix of the previous network for use with extension *EFMChecker*.
 
-Code for constructing this structure not yet distributed, as simplifications will be done at a later date.
+Code for constructing this structure distributed with *mparser*, simplifications will be done at a later date.
 
 ```mcs_example_hadicke.lp4```:
 
