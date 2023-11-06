@@ -16,7 +16,7 @@ from extensions.clingoLP_extension import clingoLPExtension
 from extensions.support_propagator import SupportPropagator
 import extensions.parsehelper as ph
 
-DEFAULT_DEBUG_VALUE = True # False # debug for printing literals
+DEFAULT_DEBUG_VALUE = False # False # debug for printing literals
 SHOW_SUPERSETS = True # debug for printing false supersets
 WANTED_REACTIONS_SIGNATURE = "wanted" # asp atom signature for wanted reactions
 
@@ -45,7 +45,7 @@ def sol_after_ko(lr, model):
         opt = model_c.optimize()
         return opt.objective_value if opt.status != 'infeasible' else 0.0
     except KeyError as e:
-        warnings.warn(str(e))
+        warnings.warn("Reaction name not found in SBML; MCSChecker likely not invoked with correct SBML file.")
         return 0.0
 
 def nm1_combinations(orig_lr, model, saves):
