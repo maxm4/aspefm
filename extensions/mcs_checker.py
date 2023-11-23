@@ -235,20 +235,20 @@ class MCSCheckerExtension(MCSChecker, clingoLPExtension):
             tmp_prop.dump_literals()
 
     def check_consistency_action(self, control, state):
+        """ TODO: Implement addition of minimal nogoods wrt constraints instead of non-minimal nogoods """
         if state.current_lit_percentage >= 100:
             if not self.is_a_mcs(state.current_assignment):
                 self.sup_mcs_solutions += 1
                 assert(self.there_are_invalid_supports()) # if fail here, check filtering method
                 active_lits, inactive_lits = self.get_invalid_support(with_inactive=True)
                 if SHOW_SUPERSETS:
-                    print('Subsolution filtered', self.show_support(active_lits))
+                    print('Superset filtered', self.show_support(active_lits))
                 if not control.add_nogood(active_lits) or not control.propagate():
                     return False
                 if not control.add_clause(inactive_lits) or not control.propagate():
                     return False
-                warnings.warn("Potentially abnormal behaviour: unable to add nogoods")
+                warnings.warn("Unable to add nogoods: previously added nogoods were non-minimal wrt constraints")
                 return False
-                #assert(False)
             return True
         elif self.wanted and state.current_lit_percentage >= 99:
             if not self.partial_mcs(state.current_assignment, self.wanted):
@@ -256,10 +256,13 @@ class MCSCheckerExtension(MCSChecker, clingoLPExtension):
                 assert(self.there_are_invalid_supports())
                 active_lits, inactive_lits = self.get_invalid_support(with_inactive=True)
                 if SHOW_SUPERSETS:
-                    print('Subsolution filtered', self.show_support(active_lits))
-                if not control.add_nogood(active_lits) or not control.add_clause(inactive_lits) or not control.propagate():
-                    return False        
-                assert(False)
+                    print('Partial superset filtered', self.show_support(active_lits))
+                if not control.add_nogood(active_lits) or not control.propagate():
+                    return False
+                if not control.add_clause(inactive_lits) or not control.propagate():
+                    return False      
+                warnings.warn("Unable to add nogoods: previously added nogoods were non-minimal wrt constraints")
+                return False
         return True
 
     def on_model_action(self, thread_id):
