@@ -6,7 +6,14 @@ CST_valid_solution = True
 CST_invalid_solution = False
 
 class clingoLPExtension(object):
-
+    
+    """ 
+        ClingoLPExtension
+        
+        Class defining actions to be done in the respective clingoLP functions 
+        For instance: init_action is called in the function init of clingoLP    
+    
+    """
     def __init__(self):
         pass
 

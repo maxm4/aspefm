@@ -17,6 +17,9 @@ $clingoLP $clingoLPParams $clingoParams $minSupport solveLP.lp4 extensions/profi
 echo "> written in output_biofuel_efms_profile.txt"
 
 echo "== remove solutions thanks to second call to LP  =="
-$clingoLP $clingoLPParams $clingoParams $minSupport solveLP.lp4 -c debug=1 extensions/lp_call_extension.py -c paramfile=\"data/toy_model_constraint.opt\" extensions/efm_checker.py -c efmcheckfile=\"data/toy_model_biofuel.efmc\" data/toy_model_biofuel.lp4 -n 0 > output_biofuel_efms_lp_constraint.txt
-#$clingoLP $clingoLPParams $clingoParams $minSupport extensions/debug_propagator.py -c debug=2 -c trace=1 solveLP.lp4 extensions/lp_call_extension.py -c paramfile=\"data/toy_model_constraint.opt\" extensions/efm_checker.py -c efmcheckfile=\"data/toy_model_biofuel.efmc\" data/toy_model_biofuel.lp4 -n 0 > output_biofuel_efms_lp_constraint.txt
+$clingoLP $clingoLPParams $clingoParams $minSupport solveLP.lp4 -c debug=1 extensions/lp_call_extension.py extensions/efm_checker.py -c paramfile=\"data/toy_model_constraint.opt\" -c efmcheckfile=\"data/toy_model_biofuel.efmc\" data/toy_model_biofuel.lp4 -n 0 > output_biofuel_efms_lp_constraint.txt
 echo "> written in output_biofuel_efms_lp_constraint.txt"
+
+echo "== remove solutions using thermodynamics  =="
+$clingoLP $clingoLPParams $clingoParams $minSupport solveLP.lp4 -c debug=1 extensions/thermo_dg_checker.py -c sbml=\"data/toy_model_constraint.opt\" -c concentrations=\"data/toy_model_constraint.opt\" -c deltaG=\"data/toy_model_constraint.opt\" data/toy_model_biofuel.lp4 -n 0 > output_biofuel_efms_delta_G.txt
+echo "> written in output_biofuel_efms_deltaG.txt"

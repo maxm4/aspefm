@@ -77,10 +77,11 @@ class ListOfExtensions(object):
 
     def add_extensions(self, prg):
         self.add_debug_extension(prg)
+        self.add_lp_caller(prg)
+        self.add_thermo_dg_checker(prg)
         self.add_efm_checker(prg)
         self.add_mcs_checker(prg)
         self.add_cplex_debug(prg)
-        self.add_lp_caller(prg)
         self.add_profiler(prg)
 
     """ Initializing every extension that was found using CLI parameters """
@@ -122,6 +123,14 @@ class ListOfExtensions(object):
             type(LPCallExtension)
             lp_caller = LPCallExtension.from_prg(prg)
             self.listOfExtensions.append(lp_caller)
+        except NameError:
+            pass
+        
+    def add_thermo_dg_checker(self, prg):
+        try:
+            type(ThermoDGCheckerExtension)
+            thermo_dg = ThermoDGCheckerExtension.from_prg(prg)
+            self.listOfExtensions.append(thermo_dg)
         except NameError:
             pass
 
