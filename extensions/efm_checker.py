@@ -293,9 +293,7 @@ class EFMCheckerExtension(EFMChecker, clingoLPExtension):
                 if not unbound_lits: 
                     if not control.add_nogood(active_lits) or not control.add_clause(inactive_lits) or not control.propagate():
                         return False   
-                    assert(False)
-                else:
-                    return False
+                return False
         return True  
 
     def after_prg_solve_action(self):
